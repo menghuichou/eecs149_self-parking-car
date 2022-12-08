@@ -13,13 +13,13 @@ def find_parking(distance, angle, maxRange = 4, cornerThres = 0.01):
     x,y = data_conversion(angle, distance, maxRange)
     # corner detection
     i_c, line = corner_detection(x,y,cornerThres)
-
+    wall_angle = np.arctan(line[0][0])
     # characterize parking slot
     if len(i_c) >= 3:  # tell if there is a parking slot
         isParking = True
-        depth, width, center_parking = characterize_parking(i_c, x, y)
+        depth, width, center_parking, angle_parking= characterize_parking(i_c, x, y)
 
-    return depth,width, center_parking,isParking
+    return depth, width, center_parking, angle_parking, wall_angle, isParking
 
 
 def data_conversion(angle,distance,maxRange):
@@ -69,8 +69,9 @@ def characterize_parking(i_c,x,y):
     cs = np.dot(c2c3, c2c1) / np.linalg.norm(c2c1, 2) / np.linalg.norm(c2c3, 2)
     depth = min([cs * np.linalg.norm(c2c3, 2), np.linalg.norm(c2c1, 2)])  # depth of parking slot
     width = np.linalg.norm(c2c3, 2) * np.sqrt(1 - cs ** 2)  # width of parking slot
-    depth_vec = (c2c1) / np.linalg.norm(c2c1, 2) * depth / 2
+    depth_vec = c2c1/ np.linalg.norm(c2c1, 2) * depth / 2
     width_dir = (-c2c1[1], c2c1[0])
     width_vec = width_dir / np.linalg.norm(width_dir) * width / 2
     center_parking = c2 + width_vec + depth_vec  # position of center of parking slot
-    return depth,width,center_parking
+    angle_parking = np.arctan(c2c1[1]/c2c1[0])
+    return depth,width,center_parking,angle_parking
