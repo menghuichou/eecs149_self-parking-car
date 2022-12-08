@@ -3,7 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def find_parking(distance, angle, maxRange = 4, cornerThres = 0.01):
+def find_parking(distance, angle, maxRange = 4, cornerThres = 0.03):
+
     isParking = False
     width = 0
     depth = 0
@@ -12,17 +13,21 @@ def find_parking(distance, angle, maxRange = 4, cornerThres = 0.01):
     # convert to cartesian
     x,y = data_conversion(angle, distance, maxRange)
     # corner detection
-    i_c, line = corner_detection(x,y,cornerThres)
-    wall_angle = np.arctan(line[0][0])
+    i_c= corner_detection(x,y,cornerThres)
+    p = np.polyfit(x[i_c[-2]:i_c[-1]], y[i_c[-2]:i_c[-1]], 1)
+    wall_angle = np.arctan(p[1]/p[0])
     # characterize parking slot
     if len(i_c) >= 3:  # tell if there is a parking slot
-        isParking = True
         depth, width, center_parking, angle_parking= characterize_parking(i_c, x, y)
-
-    return depth, width, center_parking, angle_parking, wall_angle, isParking
+        if(width>=0.5):
+            isParking = True
+            return depth, width, center_parking, angle_parking, wall_angle, isParking
+        else:
+            return 0,0,0,0,0,isParking
 
 
 def data_conversion(angle,distance,maxRange):
+    angle = angle/180*np.pi
     angle = angle[distance <= maxRange]
     distance = distance[distance <= maxRange]
 
@@ -48,16 +53,14 @@ def corner_detection(x, y, e):
     n = len(x)
     i_c = []
     ini = 0
-    line = []
     for i in range(1,n-1):
         if i+1-ini >= 2:
             p = np.polyfit(x[ini:i+1], y[ini:i+1], 1)
             pd = np.abs(p[0]*x[i+1]-y[i+1]+p[1])/np.sqrt(p[0]**2+p[1]**2)
             if pd > e:
                 i_c.append(i)
-                ini = i+1
-                line.append(p)
-    return i_c,line
+                ini = i
+    return i_c
 
 
 def characterize_parking(i_c,x,y):
@@ -69,9 +72,9 @@ def characterize_parking(i_c,x,y):
     cs = np.dot(c2c3, c2c1) / np.linalg.norm(c2c1, 2) / np.linalg.norm(c2c3, 2)
     depth = min([cs * np.linalg.norm(c2c3, 2), np.linalg.norm(c2c1, 2)])  # depth of parking slot
     width = np.linalg.norm(c2c3, 2) * np.sqrt(1 - cs ** 2)  # width of parking slot
-    depth_vec = c2c1/ np.linalg.norm(c2c1, 2) * depth / 2
+    depth_vec = c2c1/np.linalg.norm(c2c1, 2) * depth / 2
     width_dir = (-c2c1[1], c2c1[0])
-    width_vec = width_dir / np.linalg.norm(width_dir) * width / 2
+    width_vec = width_dir / np.linalg.norm(width_dir,2) * width / 2
     center_parking = c2 + width_vec + depth_vec  # position of center of parking slot
     angle_parking = np.arctan(c2c1[1]/c2c1[0])
     return depth,width,center_parking,angle_parking
